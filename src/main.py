@@ -1,9 +1,18 @@
 import sys
 import os
 import time
+import csv
+from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
 import matplotlib.pyplot as plt  # Used for comparison charts
+
+# Try importing Pillow for screenshots; handle the case if it's not installed
+try:
+    from PIL import ImageGrab
+except ImportError:
+    ImageGrab = None
+    print("Pillow library not found. Screenshots will be disabled. (Run 'pip install Pillow' to enable)")
 
 # Add the project root directory to the system path to allow module imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -179,8 +188,62 @@ class PathFindingApp:
             self.canvas.itemconfig(self.rects[node.r][node.c], fill=COLOR_VISITED)
         self.root.update()
 
+    def save_experiment_data(self, algo_name, time_taken, nodes, cost, is_optimal):
+        """
+        Automatically saves experiment metrics to a CSV file and captures a screenshot of the maze.
+        """
+        # 1. Ensure the 'results' directory exists
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        results_dir = os.path.join(base_dir, 'results')
+
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+
+        # 2. Save numerical metrics to a CSV file (Excel compatible)
+        csv_file = os.path.join(results_dir, 'experiment_log.csv')
+        file_exists = os.path.isfile(csv_file)
+
+        try:
+            with open(csv_file, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                # If the file is new, write the headers first
+                if not file_exists:
+                    writer.writerow(
+                        ['Timestamp', 'Algorithm', 'Time(ms)', 'Nodes Explored', 'Path Cost', 'Optimal?'])
+
+                # Write the current experiment data
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                writer.writerow([timestamp, algo_name, f"{time_taken:.4f}", nodes, cost, is_optimal])
+
+            print(f"[-] Saved metrics to {csv_file}")
+        except Exception as e:
+            print(f"[!] Error saving CSV: {e}")
+
+        # 3. Capture and save a screenshot of the canvas (if Pillow is installed)
+        if ImageGrab:
+            # Force the UI to update to ensure the drawing is complete
+            self.root.update()
+
+            # Generate a unique filename based on the current time
+            timestamp_str = datetime.now().strftime('%H-%M-%S')
+            img_name = f"{algo_name}_{timestamp_str}.png"
+            img_path = os.path.join(results_dir, img_name)
+
+            try:
+                # Calculate the coordinates of the canvas on the screen
+                x = self.root.winfo_rootx() + self.canvas.winfo_x()
+                y = self.root.winfo_rooty() + self.canvas.winfo_y()
+                x1 = x + self.canvas.winfo_width()
+                y1 = y + self.canvas.winfo_height()
+
+                # Capture the specific area and save it
+                ImageGrab.grab().crop((x, y, x1, y1)).save(img_path)
+                print(f"[-] Saved screenshot to {img_path}")
+            except Exception as e:
+                print(f"[!] Error taking screenshot: {e}")
+
     def run(self):
-        """Executes the selected algorithm and updates metrics."""
+        """Executes the selected algorithm, updates metrics, and auto-saves results."""
         if not self.start_pos or not self.goal_pos:
             messagebox.showerror("Error", "Please set Start (Right Click) and Goal (Shift+Click)")
             return
@@ -224,8 +287,17 @@ class PathFindingApp:
         # Save data for chart comparison
         self.comparison_data[algo_name] = {'time': exec_time, 'nodes': nodes_count, 'cost': cost}
 
+        # --- Auto-Save Data ---
+        # Determine if the algorithm is theoretically optimal
+        optimal_algos = ["BFS (Breadth-First)", "A* Search (Manhattan)", "UCS (Uniform-Cost)",
+                         "IDS (Iterative Deepening)"]
+        is_optimal = "Yes" if algo_name in optimal_algos else "No"
+
+        # Call the save method
+        self.save_experiment_data(algo_name, exec_time, nodes_count, cost, is_optimal)
+
     def show_charts(self):
-        """Displays Bar Charts comparing the performance of executed algorithms."""
+        """Displays Bar Charts comparing the performance of executed algorithms and saves the image."""
         if not self.comparison_data:
             messagebox.showinfo("Info", "Run at least two algorithms to compare!")
             return
@@ -251,6 +323,21 @@ class PathFindingApp:
         ax2.set_ylabel('Count')
 
         plt.tight_layout()
+
+        # --- Save Chart to File ---
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        results_dir = os.path.join(base_dir, 'results')
+
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+
+        chart_path = os.path.join(results_dir, 'comparison_chart.png')
+
+        # Save the figure
+        plt.savefig(chart_path)
+        print(f"[-] Chart saved to {chart_path}")
+
+        # Show the chart window
         plt.show()
 
 

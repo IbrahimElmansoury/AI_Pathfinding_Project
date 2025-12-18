@@ -1,0 +1,8 @@
+Timestamp,Algorithm,Time(ms),Nodes Explored,Path Cost,Optimal?
+2025-12-18 18:36:28,BFS (Breadth-First),193.2300,225,14,Yes
+2025-12-18 18:36:35,DFS (Depth-First),24.1200,169,154,No
+2025-12-18 18:36:39,UCS (Uniform-Cost),17.9800,237,14,Yes
+2025-12-18 18:36:45,IDS (Iterative Deepening),1511.0600,1188701,14,Yes
+2025-12-18 18:36:49,A* Search (Manhattan),12.4800,52,14,Yes
+2025-12-18 18:36:53,Greedy Best-First,12.5800,91,32,No
+2025-12-18 18:37:00,Hill Climbing,32.9100,39,38,No
